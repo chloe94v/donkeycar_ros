@@ -1,0 +1,61 @@
+import pygame
+import rospy
+from std_msgs.msg import Float32MultiArray
+
+def talker():
+
+    # Initialisation de pygame et du module joystick
+    pygame.init()
+    pygame.joystick.init()
+
+    # Initialisation rospy
+    pub = rospy.Publisher('/multi_float_topic', Float32MultiArray, queue_size=10)
+    # Initialise le nœud ROS avec le nom 'talker'
+    # anonymous=True ajoute un identifiant unique au nom du nœud
+    rospy.init_node('talker', anonymous=True)
+
+    # Définit la fréquence d'exécution de la boucle (10 fois par seconde)
+    rate = rospy.Rate(10) # 10hz
+
+    # Boucle principale qui continue tant que ROS n'est pas arrêté
+    while not rospy.is_shutdown():
+
+        # Vérifier si une manette est connectée
+        if pygame.joystick.get_count() == 0:
+            print("Aucune manette détectée. Veuillez connecter une manette PS2 via USB.")
+            exit()
+
+        # Initialiser la manette
+        joystick = pygame.joystick.Joystick(0)
+        joystick.init()
+
+        print(f"Manette détectée : {joystick.get_name()}")
+
+        # Boucle principale pour lire les entrées
+        running = True
+        while running:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    running = False
+
+                # Détection des sticks analogiques
+                if event.type == pygame.JOYAXISMOTION:
+                    axes = [round(joystick.get_axis(i),1) for i in range(0,2)]
+                    print(f"Axes : {axes}")
+                    msg = Float32MultiArray(data=axes)
+                    rospy.loginfo(f"Envoi : {msg.data}")
+                    pub.publish(msg)
+                    # Attend le temps nécessaire pour maintenir la fréquence de 10Hz
+                    rate.sleep()
+
+        pygame.quit()
+
+# Point d'entrée du script
+if __name__ == '__main__':
+   try:
+       # Let’s go !
+       talker()
+   # Gère l'interruption proprement (par exemple Ctrl+C)
+   except rospy.ROSInterruptException:
+       pass
+
